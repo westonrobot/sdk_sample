@@ -102,6 +102,7 @@ int main(int argc, char** argv) {
   angular.z = 0.0;
 
   while (true) {
+    // set motion command
     robot->SetMotionCommand(linear, angular);
 
     // get robot and sensor state
