@@ -19,6 +19,7 @@
 using namespace westonrobot;
 
 std::shared_ptr<MobileBase> robot;
+bool has_control_token = false;
 
 std::string ConvertToString(double value) {
   std::stringstream stream;
@@ -52,20 +53,23 @@ HandshakeResultType RequestControlToken() {
       std::cout << "ControlRequestTimeout" << std::endl;
       break;
   }
+
+  if (feedback.code == HANDSHAKE_RESULT_CONTROL_ACQUIRED) {
+    has_control_token = true;
+    std::cout << "Has Token " << std::endl;
+  } else {
+    std::cout << "Failed to gain control token, robot will not be controlled "
+                 "by the SDK"
+              << std::endl;
+  }
+
   return feedback;
 }
 
 void ControlLostCallback(void) {
+  // This function should be non-blocking and short
   std::cout << "SDK has lost control!" << std::endl;
-
-  // you can try to regain the control token automatically or notify your
-  // upper-level navigation system to respond properly
-  HandshakeResultType feedback;
-  do {
-    std::cout << "Trying to regain control..." << std::endl;
-    feedback = RequestControlToken();
-    sleep(5);
-  } while (feedback.code != HANDSHAKE_RESULT_CONTROL_ACQUIRED);
+  has_control_token = false;
 }
 
 int main(int argc, char** argv) {
@@ -83,13 +87,9 @@ int main(int argc, char** argv) {
   /* Create a mobile base object and try to gain control token */
   robot = std::make_shared<MobileBase>();
   robot->Connect(device_name);
+  robot->RegisterLoseControlCallback(ControlLostCallback);
 
-  auto feedback = RequestControlToken();
-  if (feedback.code != HANDSHAKE_RESULT_CONTROL_ACQUIRED) {
-    std::cout << "Failed to gain control token, robot will not be controlled "
-                 "by the SDK"
-              << std::endl;
-  }
+  RequestControlToken();
 
   /* Now you can enter the main control loop*/
   ZVector3 linear, angular;
@@ -103,12 +103,17 @@ int main(int argc, char** argv) {
 
   while (true) {
     // set motion command
-    robot->SetMotionCommand(linear, angular);
+    if (has_control_token) {
+      robot->SetMotionCommand(linear, angular);
+    } else {
+      RequestControlToken();
+    }
 
     // get robot and sensor state
     SystemStateMsg system_state = robot->GetSystemState();
     MotionStateMsg motion_state = robot->GetMotionState();
     LightStateMsg light_state = robot->GetLightState();
+    // only when there is relevant sensor available
     UltrasonicDataMsg ultrasonic_data = robot->GetUltrasonicData();
     std::vector<TofDataMsg> tof_data = robot->GetTofData();
 
