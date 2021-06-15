@@ -11,6 +11,7 @@
  */
 
 #include <memory>
+#include <atomic>
 #include <iomanip>
 #include <sstream>
 
@@ -19,7 +20,7 @@
 using namespace westonrobot;
 
 std::shared_ptr<MobileBase> robot;
-bool has_control_token = false;
+std::atomic<bool> has_control_token;
 
 std::string ConvertToString(double value) {
   std::stringstream stream;
@@ -28,8 +29,9 @@ std::string ConvertToString(double value) {
 }
 
 HandshakeResultType RequestControlToken() {
-  // you need to gain the control token in order to control the robot to move
+  // You need to gain the control token in order to control the robot to move
   auto feedback = robot->RequestControl();
+
   switch (feedback.code) {
     case HANDSHAKE_RESULT_ROBOT_BASE_NOT_ALIVE:
       std::cout << "RobotBaseNotAlive" << std::endl;
@@ -86,8 +88,10 @@ int main(int argc, char** argv) {
 
   /* Create a mobile base object and try to gain control token */
   robot = std::make_shared<MobileBase>();
-  robot->Connect(device_name);
+  has_control_token = false;
   robot->RegisterLoseControlCallback(ControlLostCallback);
+
+  robot->Connect(device_name);
 
   RequestControlToken();
 
