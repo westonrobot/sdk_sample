@@ -15,4 +15,4 @@ find_package(wrp_zbus REQUIRED)
 
 ## Add your target
 add_executable(sdk_demo src/sdk_demo.cpp)
-target_link_libraries(sdk_demo westonrobot::wrp_sdk)
+target_link_libraries(sdk_demo PRIVATE westonrobot::wrp_sdk)
